@@ -442,8 +442,6 @@ display_time=$(date)
 clear
 display_info
 initialize
-ping_processing=false
-gateway_processing=false
 dhcp_begin_time=$(date +%s)
 ping_begin_time=$(date +%s)
 while : ; do
