@@ -15,8 +15,12 @@ EXAMPLE:
 WANs are... DHCP STATIC STATIC DHCP
 
 INTERFACE=(WAN1 WAN2 WAN3 WAN3)
+
 USE_DHCP=(true false false true)
+
 LOOKUP_TABLE=(1 2 3 4)
+
 TRAFFIC_MARK=(0x1 0x2 0x3 0x4)
+
 
 Still a work in progress...
