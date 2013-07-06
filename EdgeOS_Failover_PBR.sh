@@ -238,7 +238,7 @@ do_ping_check(){
 ###
 ping_interface(){
     #sudo ping -W $1 -I ${IP_ADDRESS[$2]} -c 1 $3 > /dev/null  2>&1
-	sudo ping -W $1 -I ${IP_ADDRESS[$2]} -c 1 $3 > /dev/null  2>&1
+	sudo ping -W $1 -I $2 -c 1 $3 > /dev/null  2>&1
     PRESULT=$?
 }
 ###
