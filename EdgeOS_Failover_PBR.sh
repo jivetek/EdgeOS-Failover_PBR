@@ -397,7 +397,7 @@ display_info(){
 		info_message "----------------------------------------------"
 		info_message "| EDGEMAX LITE - PBR / FAILOVER SCRIPT "
 		info_message "| by Matthew Holder matthew.holder@jivetek.com"
-		info_message "| version version"
+		info_message "| version $version"
 		info_message "----------------------------------------------"
 		info_message " "
 		info_message "STARTUP TIME: $display_time"
