@@ -178,22 +178,20 @@ set_all_gateways(){
 				if [ ! ${GW_ADDRESS[$key]} = 0 ]; then
 					if [ ${GW_CURRENT[$key]} = 0 ]; then
 						GW_CURRENT[$key]=${GW_ADDRESS[$key]}
-						if [ ${DHCP_LIST[$key]} = true ]; then
-							if [ $INITIALIZING = true ]; then
-								change_message "INITIALIZING: SET static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
-								set static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
-								change_message "INITIALIZING: DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop"
-								delete static table $CURRENT_TABLE route 0.0.0.0/0 next-hop
-								change_message "INITIALIZING: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
-								set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
-							else
-								change_message "GATEWAY CHANGE: SET static route $CURRENT_TABLE route 0.0.0.0/0 next-hop"							
-								set static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
-								change_message "GATEWAY CHANGE: DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop"
-								delete static table $CURRENT_TABLE route 0.0.0.0/0 next-hop
-								change_message "GATEWAY CHANGE: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
-								set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}								
-							fi
+						if [ $INITIALIZING = true ]; then
+							change_message "INITIALIZING: SET static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+							set static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
+							change_message "INITIALIZING: DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop"
+							delete static table $CURRENT_TABLE route 0.0.0.0/0 next-hop
+							change_message "INITIALIZING: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+							set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
+						else
+							change_message "GATEWAY CHANGE: SET static route $CURRENT_TABLE route 0.0.0.0/0 next-hop"							
+							set static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
+							change_message "GATEWAY CHANGE: DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop"
+							delete static table $CURRENT_TABLE route 0.0.0.0/0 next-hop
+							change_message "GATEWAY CHANGE: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+							set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}								
 						fi
 					else
 						if [ $INITIALIZING = true ]; then
