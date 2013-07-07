@@ -49,17 +49,17 @@ TIMEOUT=1
 ####################C
 #CONSECUTIVE FAILURES BEFORE CONSIDERED DOWN
 ####################
-FAILURE=3
+FAILURE=2
 
 ####################
 #CONSECUTIVE SUCCESS BEFORE CONSIDERED UP
 ####################
-SUCCESS=3
+SUCCESS=2
 
 ####################
 #MINIMUM TIME TO WAIT BETWEEN PINGS (also affected by dhcp wait)
 ####################
-PING_TIMER=5
+PING_TIMER=3
 
 ####################
 #DISPLAY CHANGE MESSAGES
@@ -94,6 +94,7 @@ INTERFACES=
 GATEWAY=
 INITIALIZING=true
 ALL_ROUTES_DOWN=false
+NEEDS_RENEW=false
 version=0.1
 ##############################DHCP / GATEWAY FUNCTIONS##############################
 ###
@@ -191,7 +192,10 @@ set_all_gateways(){
 							change_message "GATEWAY CHANGE: DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop"
 							delete static table $CURRENT_TABLE route 0.0.0.0/0 next-hop
 							change_message "GATEWAY CHANGE: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
-							set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}								
+							set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
+							
+							#why do we need to do this? have to renew interface a second time...
+							NEEDS_RENEW=$key								
 						fi
 					else
 						if [ $INITIALIZING = true ]; then
@@ -213,6 +217,10 @@ set_all_gateways(){
 								change_message "GATEWAY CHANGE: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
 								set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
 								GW_CURRENT[$key]=${GW_ADDRESS[$key]}
+								
+								
+								#why do we need to do this? have to renew interface a second time...
+								NEEDS_RENEW=$key
 							fi
 						fi
 					fi
@@ -450,6 +458,11 @@ while : ; do
 			do_gateway_check
 			dhcp_begin_time=$(date +%s)
 		fi		
+	fi
+	if [ ! $NEEDS_RENEW = false ]; then
+		sleep 5
+		dhclient $NEEDS_RENEW
+		NEEDS_RENEW=false
 	fi
 	ping_current_time=$(date +%s)
 	ping_check_time="$(( $ping_current_time - $ping_begin_time ))"
