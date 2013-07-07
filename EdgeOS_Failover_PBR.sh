@@ -456,13 +456,13 @@ while : ; do
 		dhcp_check_time="$(( $dhcp_current_time - $dhcp_begin_time ))"
 		if [ $dhcp_check_time -ge $DHCP_CHECK ]; then
 			do_gateway_check
+			if [ ! $NEEDS_RENEW = false ]; then
+				sleep 3
+				dhclient $NEEDS_RENEW
+				NEEDS_RENEW=false
+			fi				
 			dhcp_begin_time=$(date +%s)
-		fi		
-	fi
-	if [ ! $NEEDS_RENEW = false ]; then
-		sleep 5
-		dhclient $NEEDS_RENEW
-		NEEDS_RENEW=false
+		fi			
 	fi
 	ping_current_time=$(date +%s)
 	ping_check_time="$(( $ping_current_time - $ping_begin_time ))"
