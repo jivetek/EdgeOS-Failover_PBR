@@ -459,4 +459,5 @@ while : ; do
 		do_ping_check
 		ping_begin_time=$(date +%s)
 	fi
+	sleep 1
 done
