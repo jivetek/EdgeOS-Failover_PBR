@@ -72,9 +72,20 @@ CHANGES=true
 MESSAGE=true
 
 ####################
-#DEBUG true/false
+#TURN ON DEBUG MESSAGES
 ####################
-DEBUG=true
+DEBUG=false
+
+####################
+#DEBUG true/false for DHCP functions
+####################
+#DHCP_DEBUG=false
+
+####################
+#DEBUG true/false for PING functions
+####################
+#PING_DEBUG=false
+
 
 ##############################DO NOT EDIT BELOW#####################################
 ##############################NON CONFIGURABLE VARIABLES############################
@@ -95,7 +106,7 @@ GATEWAY=
 INITIALIZING=true
 ALL_ROUTES_DOWN=false
 NEEDS_RENEW=false
-version=0.1
+version=1.0
 ##############################DHCP / GATEWAY FUNCTIONS##############################
 ###
 do_gateway_check(){
@@ -105,7 +116,7 @@ do_gateway_check(){
 ###
 get_all_gateways(){
 	if [ $USING_DHCP = true ]; then
-		all_dhcp_leases=$($run show dhcp client leases)
+		all_dhcp_leases=$($run show dhcp client leases 2>/dev/null)
 		all_dhcp_leases+=$'\n'	
 		x=0
 		unset data
@@ -138,12 +149,13 @@ get_all_gateways(){
 				done
 			else
 				if [ $INITIALIZING = true ]; then			
-					GATEWAY=$(ip route show default | awk "/dev $key weight/ {print \$3}")
+					GATEWAY=$(ip route show default | awk "/dev $key weight/ {print \$3}" 2>/dev/null)
+					debug_message "ip route show default"
 					if [ ! -z "$GATEWAY" ]; then		
 						GW_ADDRESS[$key]=$GATEWAY
 					else
-						change_message "ERROR: $key using STATIC IP has no GATEWAY set"
-						change_message "exiting"
+						change_message "$key using STATIC IP has no GATEWAY set" "ERROR"
+						change_message "exiting" "ERROR"
 						exit
 					fi	
 				fi		
@@ -170,7 +182,7 @@ set_all_gateways(){
 			configure
 			edit protocols
 			if [ $INITIALIZING = true ]; then
-				change_message "INITIALIZING: DELETE static route 0.0.0.0/0 next-hop"
+				change_message "DELETE static route 0.0.0.0/0 next-hop" "STARTUP"
 				delete static route 0.0.0.0/0 next-hop
 			fi
 			for(( i = 0; i < $INTERFACES; i++ )); do
@@ -180,18 +192,18 @@ set_all_gateways(){
 					if [ ${GW_CURRENT[$key]} = 0 ]; then
 						GW_CURRENT[$key]=${GW_ADDRESS[$key]}
 						if [ $INITIALIZING = true ]; then
-							change_message "INITIALIZING: SET static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+							change_message "SET static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}" "STARTUP"
 							set static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
-							change_message "INITIALIZING: DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop"
+							change_message "DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop" "STARTUP"
 							delete static table $CURRENT_TABLE route 0.0.0.0/0 next-hop
-							change_message "INITIALIZING: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+							change_message "SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}" "STARTUP"
 							set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
 						else
-							change_message "GATEWAY CHANGE: SET static route $CURRENT_TABLE route 0.0.0.0/0 next-hop"							
+							change_message "SET static route $CURRENT_TABLE route 0.0.0.0/0 next-hop" "GATEWAY"							
 							set static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
-							change_message "GATEWAY CHANGE: DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop"
+							change_message "DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop" "GATEWAY"
 							delete static table $CURRENT_TABLE route 0.0.0.0/0 next-hop
-							change_message "GATEWAY CHANGE: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+							change_message "SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}" "GATEWAY"
 							set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
 							
 							#why do we need to do this? have to renew interface a second time...
@@ -199,22 +211,22 @@ set_all_gateways(){
 						fi
 					else
 						if [ $INITIALIZING = true ]; then
-								change_message "INITIALIZING: SET static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+								change_message "SET static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}" "STARTUP"
 								set static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}						
-								change_message "INITIALIZING: DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_CURRENT[$key]}"
+								change_message "DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_CURRENT[$key]}" "STARTUP"
 								delete static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_CURRENT[$key]}
-								change_message "INITIALIZING: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+								change_message "SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}" "STARTUP"
 								set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
 								GW_CURRENT[$key]=${GW_ADDRESS[$key]}						
 						else
 							if [ "${GW_ADDRESS[$key]}" != "${GW_CURRENT[$key]}" ]; then
-								change_message "GATEWAY CHANGE: DELETE static route 0.0.0.0/0 next-hop ${GW_CURRENT[$key]}"
+								change_message "DELETE static route 0.0.0.0/0 next-hop ${GW_CURRENT[$key]}" "GATEWAY"
 								delete static route 0.0.0.0/0 next-hop ${GW_CURRENT[$key]}
-								change_message "GATEWAY CHANGE: SET static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+								change_message "SET static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}" "GATEWAY"
 								set static route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
-								change_message "GATEWAY CHANGE: DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_CURRENT[$key]}"
+								change_message "DELETE static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_CURRENT[$key]}" "GATEWAY"
 								delete static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_CURRENT[$key]}
-								change_message "GATEWAY CHANGE: SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}"
+								change_message "SET static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}" "GATEWAY"
 								set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
 								GW_CURRENT[$key]=${GW_ADDRESS[$key]}
 								
@@ -291,25 +303,25 @@ set_interface_status(){
 		if [[ $prev_status != $2 ]]; then
 			if [ $INITIALIZING = true ]; then
 				INITIALIZED_INTERFACES[$1]=true
-				change_message "INITIALIZING: $1 [$status] | Traffic Mark [$STATUS_MARK] | Lookup Table [$STATUS_TABLE]"
+				change_message "$1 [$status] | Mark [$STATUS_MARK] | Table [$STATUS_TABLE]" "STARTUP"
 			else
-				change_message "STATUS: $1 [$status] | Traffic Mark [$STATUS_MARK] | Lookup Table [$STATUS_TABLE]"
+				change_message "$1 [$status] | Mark [$STATUS_MARK] | Table [$STATUS_TABLE]" "STATUS"
 			fi
 		else
 			if [ $INITIALIZING = true ]; then
 				INITIALIZED_INTERFACES[$1]=true
-				change_message "INITIALIZING: $1 [$status] | Traffic Mark [$STATUS_MARK] | Lookup Table [$STATUS_TABLE]"
+				change_message "$1 [$status] | Mark [$STATUS_MARK] | Table [$STATUS_TABLE]" "STARTUP"
 			else
-				change_message "STATUS: $1 [$status] | Traffic Mark [$STATUS_MARK] | Lookup Table [$STATUS_TABLE]"
+				change_message "$1 [$status] | Mark [$STATUS_MARK] | Table [$STATUS_TABLE]" "STATUS"
 			fi			
 		fi
 	else
 		if [ $INITIALIZING = true ]; then
 			INITIALIZED_INTERFACES[$1]=true
-			change_message "INITIALIZING: $1 [$status] | Traffic Mark [$STATUS_MARK] | Lookup Table [$STATUS_TABLE]"
+			change_message "$1 [$status] | Mark [$STATUS_MARK] | Table [$STATUS_TABLE]" "STARTUP"
 		
 		else
-			change_message "STATUS: $1 [$status] | Traffic Mark [$STATUS_MARK] | Lookup Table [$STATUS_TABLE]"
+			change_message "$1 [$status] | Mark [$STATUS_MARK] | Table [$STATUS_TABLE]" "STATUS"
 		fi		
 	fi
 }
@@ -334,12 +346,12 @@ change_routes(){
 					route_mark=${INTERFACE_MARK[$route_key]}
 					route_table=${INTERFACE_TABLE[$route_key]}
 					new_table=${INTERFACE_TABLE[$new_key]}
-					change_message "ROUTE CHANGE: ADD Traffic Marked [$route_mark] From Table [$route_table] To Table [$new_table]"
+					change_message "ADD Traffic Marked [$route_mark] From Table [$route_table] To Table [$new_table]" "ROUTE"
 					((CHANGED_ROUTE[$route_key]=$new_table))	
 					add_route $route_mark $new_table				
 				else
 					if [ $ALL_ROUTES_DOWN = false ]; then
-						change_message "OUTAGE: ## All Routes [DOWN] ##" 
+						change_message "## All Routes [DOWN] ##" "OUTAGE"
 						ALL_ROUTES_DOWN=true
 					fi
 				fi
@@ -350,7 +362,7 @@ change_routes(){
 				route_mark=${INTERFACE_MARK[$route_key]}
 				route_table=${INTERFACE_TABLE[$route_key]}
 				new_table=${CHANGED_ROUTE[$route_key]}				
-				change_message "ROUTE CHANGE: DELETE Traffic Marked [$route_mark] From Table [$new_table]"
+				change_message "DELETE Traffic Marked [$route_mark] From Table [$new_table]" "ROUTE"
 				((CHANGED_ROUTE[$route_key]=0))	
 				delete_route $route_mark $new_table			
 			fi
@@ -384,11 +396,11 @@ initialize(){
 		INITIALIZED_INTERFACES[$key]=false
 	done
 	INTERFACES=$i
-	info_message "INITIALIZING: Getting Gateway Addresses"	
+	info_message "Getting Gateway Addresses" "STARTUP"
 	get_all_gateways
-	info_message "INITIALIZING: Setting Gateway Addresses"	
+	info_message "Setting Gateway Addresses" "STARTUP"
 	set_all_gateways
-	info_message "INITIALIZING: Getting Status of Interfaces"
+	info_message "Getting Status of Interfaces" "STARTUP"
 	get_all_status
 	INITIALIZING=false
 	display_info $(date +%s)
@@ -398,16 +410,16 @@ initialize(){
 display_info(){
 	if [ ! -z $1 ]; then
 		initialize_time=$(( $1 - $begin_time ))
-		info_message "INITIALIZATION COMPLETED: took $initialize_time seconds"
+		info_message "Completed in $initialize_time seconds" "STARTUP"
 	else
 		info_message "----------------------------------------------"
-		info_message "| EDGEMAX LITE - PBR / FAILOVER SCRIPT "
+		info_message "| EDGEMAX LITE - PBR / FAILOVER SCRIPT " ""
 		info_message "| by Matthew Holder matthew.holder@jivetek.com"
-		info_message "| version $version"
+		info_message "| version $version" ""
 		info_message "----------------------------------------------"
 		info_message " "
-		info_message "STARTUP TIME: $display_time"
-		info_message "INITIALIZING: Setting Environmental Variables"
+		info_message "Time is $display_time" "STARTUP"
+		info_message "Setting Environmental Variables" "STARTUP"
 	fi
 }
 
@@ -426,20 +438,23 @@ get_all_status(){
 ###
 debug_message(){
 	if [ $DEBUG = true ]; then
-		echo "   ---DEBUG MESSAGE---"
-		echo "   "$1
+		echo $(date +"%m/%d-%H:%M:%S") [-DEBUG-]: $1
 	fi	
 }
 ###
 info_message(){
 	if [ $MESSAGE = true ]; then
-		echo $1
+		if [ ! -z $2 ]; then
+			echo $(date +"%m/%d-%H:%M:%S") [$2]: $1
+		else
+			echo $1
+		fi
 	fi
 }
 ###
 change_message(){
 	if [ $CHANGES = true ]; then
-		echo $1
+		echo $(date +"%m/%d-%H:%M:%S") [$2]: $1
 	fi
 }
 ##############################PROGRAM MAIN##########################################
