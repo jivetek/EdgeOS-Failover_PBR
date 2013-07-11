@@ -17,11 +17,10 @@ Step 2: Once you have setup your configuration for PBR Load Balancing, save and 
 Step 3: Download the script: https://github.com/jivetek/EdgeOS-Failover_PBR
 Place the file EdgeOS_Failover_PBR.sh in your /config/scripts directory.
 Quickest way is with the use of wget
- 
-  SSH into your router
-  sudo su
-  cd /config/scripts
-  wget https://raw.github.com/jivetek/EdgeOS-Failover_PBR/master/EdgeOS_Failover_PBR.sh
+SSH into your router
+sudo su
+cd /config/scripts
+wget https://raw.github.com/jivetek/EdgeOS-Failover_PBR/master/EdgeOS_Failover_PBR.sh
 (this link is to the newest version on the master branch of the project)
  
 
