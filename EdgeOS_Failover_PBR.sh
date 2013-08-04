@@ -140,7 +140,7 @@ get_all_gateways(){
 					current_dhcp_interface=$(echo "$j" | grep interface | sed 's/.*interface  : \(.*\)/\1/')		
 					current_dhcp_gateway=$(echo "$j" | grep router | grep -o [0-9].*)
 					current_ip_address=$(echo "$j" | grep address | grep -o [0-9].* | cut -f1 -d"	")
-					if [ $current_dhcp_interface = $key ]; then
+					if [ "$current_dhcp_interface" == "$key" ]; then
 						if [[ ! -z $current_dhcp_interface && ! -z $current_dhcp_gateway ]]; then
 							GW_ADDRESS[$key]=$current_dhcp_gateway
 							IP_ADDRESS[$key]=$current_ip_address
