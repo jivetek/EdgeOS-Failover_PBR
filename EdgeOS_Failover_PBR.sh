@@ -133,7 +133,7 @@ get_all_gateways(){
 		for(( i = 0; i < $INTERFACE; i++ )); do
 			key=${INTERFACE[$i]}
 			if [ ${DYNPPPOE_LIST[$key]} = true ]; then
-				PPPOE_DATA=$(sudo ifconfig $key | P-t-P)
+				PPPOE_DATA=$(sudo ifconfig $key | grep 'P-t-P')
 				current_pppoe_address=$(echo $PPPOE_DATA | grep 'inet addr:' | cut -d: -f2 | awk '{print $1}')
 				current_pppoe_remote=$(echo $PPPOE_DATA | grep 'P-t-P:' | cut -d: -f2 | awk '{print $1}')
 				if [ ! -z $current_pppoe_remote ]; then
