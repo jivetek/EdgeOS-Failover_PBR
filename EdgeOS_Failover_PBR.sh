@@ -7,7 +7,7 @@ run=/opt/vyatta/bin/vyatta-op-cmd-wrapper
 #INTERFACE SETTINGS
 #IF1 IF2 IF3 IF4 etc
 ####################
-INTERFACE=(eth1.500 eth2.600)
+INTERFACE=(pppoe0 pppoe1)
 
 ###################
 #MARK TO CHANGE FOR EACH INTERFACE
@@ -22,17 +22,30 @@ LOOKUP_TABLE=(1 2)
 ####################
 #USE DHCP ON AN INTERFACE
 ####################
-USING_DHCP=true
+USING_DHCP=false
+
+####################
+#USE DYNAMIC PPPOE
+####################
+USING_DYNPPPOE=true
 
 ####################
 #DHCP FOR EACH INTERFACE
 #IF USING_DHCP=false - THIS DOESNT MATTER
 #true/false FOR EACH INTERFACE 
 ####################
-USE_DHCP=(true true)
+USE_DHCP=(false false)
+
+####################
+#DYNPPPOE FOR EACH INTERFACE
+#IF USING_DYNPPPOE=false - THIS DOESNT MATTER
+#true/false FOR EACH INTERFACE 
+####################
+USE_DYNPPPOE=(true true)
 
 ####################
 #MINIMUM TIME TO CHECK DHCP (also affected by ping wait)
+#Also applies to dynamic pppoe addresses
 ####################
 DHCP_CHECK=30
 
@@ -46,7 +59,7 @@ TEST_ADDRESS=8.8.8.8
 ####################
 TIMEOUT=1
 
-####################C
+####################
 #CONSECUTIVE FAILURES BEFORE CONSIDERED DOWN
 ####################
 FAILURE=2
@@ -99,6 +112,7 @@ declare -A INTERFACE_MARK
 declare -A GW_ADDRESS
 declare -A GW_CURRENT
 declare -A DHCP_LIST
+declare -A DYNPPPOE_LIST
 declare -A INITIALIZED_INTERFACES
 declare -A IP_ADDRESS
 INTERFACES=
@@ -107,7 +121,7 @@ INITIALIZING=true
 ALL_ROUTES_DOWN=false
 NEEDS_RENEW=false
 version=1.0
-##############################DHCP / GATEWAY FUNCTIONS##############################
+##############################DYNAMIC (DHCP / PPPOE) / GATEWAY FUNCTIONS##############################
 ###
 do_gateway_check(){
 	get_all_gateways
@@ -115,6 +129,20 @@ do_gateway_check(){
 }
 ###
 get_all_gateways(){
+	if [ $USING_DYNPPPOE = true ]; then
+		for(( i = 0; i < $INTERFACE; i++ )); do
+			key=${INTERFACE[$i]}
+			if [ ${DYNPPPOE_LIST[$key]} = true ]; then
+				PPPOE_DATA=$(sudo ifconfig $key | P-t-P)
+				current_pppoe_address=$(echo $PPPOE_DATA | grep 'inet addr:' | cut -d: -f2 | awk '{print $1}')
+				current_pppoe_remote=$(echo $PPPOE_DATA | grep 'P-t-P:' | cut -d: -f2 | awk '{print $1}')
+				if [ ! -z $current_pppoe_remote ]; then
+					GW_ADDRESS[$key]=$current_pppoe_remote
+					IP_ADDRESS[$key]=$current_pppoe_address
+				fi
+			fi
+		done		
+	fi
 	if [ $USING_DHCP = true ]; then
 		all_dhcp_leases=$($run show dhcp client leases 2>/dev/null)
 		all_dhcp_leases+=$'\n'	
@@ -166,7 +194,7 @@ get_all_gateways(){
 
 ###
 set_all_gateways(){	
-	if [ $USING_DHCP = true ]; then
+	if [[ $USING_DHCP || $USING_DYNPPPOE = true ]]; then
 		MAKE_CHANGES=false
 		for(( i = 0; i < $INTERFACES; i++ )); do
 			key=${INTERFACE[$i]}
@@ -207,7 +235,9 @@ set_all_gateways(){
 							set static table $CURRENT_TABLE route 0.0.0.0/0 next-hop ${GW_ADDRESS[$key]}
 							
 							#why do we need to do this? have to renew interface a second time...
-							NEEDS_RENEW=$key								
+							if [ $USING_DHCP = true ]; then 
+								NEEDS_RENEW=$key	
+							fi							
 						fi
 					else
 						if [ $INITIALIZING = true ]; then
@@ -232,7 +262,9 @@ set_all_gateways(){
 								
 								
 								#why do we need to do this? have to renew interface a second time...
-								NEEDS_RENEW=$key
+								if [ $USING_DHCP = true ]; then 
+									NEEDS_RENEW=$key	
+								fi	
 							fi
 						fi
 					fi
@@ -388,6 +420,7 @@ initialize(){
 		CURRENT_STATUS[$key]=false
 		CHANGED_ROUTE[$key]=0
 		DHCP_LIST[$key]=${USE_DHCP[$i]}	
+		DYNPPPOE_LIST[$key]=${USE_DYNPPPOE[$i]}
 		INTERFACE_TABLE[$key]=${LOOKUP_TABLE[$i]}
 		INTERFACE_MARK[$key]=${TRAFFIC_MARK[$i]}
 		GW_ADDRESS[$key]=0
@@ -466,15 +499,17 @@ initialize
 dhcp_begin_time=$(date +%s)
 ping_begin_time=$(date +%s)
 while : ; do
-	if [ $USING_DHCP = true ]; then
+	if [[ $USING_DHCP = true || $USING_DYNPPPOE = true ]]; then
 		dhcp_current_time=$(date +%s)
 		dhcp_check_time="$(( $dhcp_current_time - $dhcp_begin_time ))"
 		if [ $dhcp_check_time -ge $DHCP_CHECK ]; then
 			do_gateway_check
-			if [ ! $NEEDS_RENEW = false ]; then
-				sleep 3
-				dhclient $NEEDS_RENEW
-				NEEDS_RENEW=false
+			if [ $USING_DHCP = true ]; then
+				if [ ! $NEEDS_RENEW = false ]; then
+					sleep 3
+					dhclient $NEEDS_RENEW
+					NEEDS_RENEW=false
+				fi
 			fi				
 			dhcp_begin_time=$(date +%s)
 		fi			
